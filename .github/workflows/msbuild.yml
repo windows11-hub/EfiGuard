@@ -1,13 +1,19 @@
 name: Build EfiGuard
-on: [push, workflow_dispatch]
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: windows-2022   # EDK2 在 windows-2022 上更稳
+    runs-on: windows-2022
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          submodules: recursive   # EfiGuard 有子模块，必须拉
+          submodules: recursive
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -19,22 +25,39 @@ jobs:
           choco install nasm -y
           echo "C:\Program Files\NASM" >> $env:GITHUB_PATH
 
-      - name: Setup EDK2
+      - name: Clone EDK2
         run: |
-          git clone https://github.com/tianocore/edk2.git
-          cd edk2
-          git submodule update --init
-          # 设置 EDK2 环境变量，指向 EfiGuard
-          # 具体路径取决于仓库结构
+          git clone --depth 1 https://github.com/tianocore/edk2.git C:\edk2
+          cd C:\edk2
+          git submodule update --init --depth 1
 
-      - name: Build
+      - name: Setup EDK2 environment
+        shell: cmd
         run: |
-          # 调 EDK2 的 build 命令
-          # 例如：build -p EfiGuardPkg/EfiGuardPkg.dsc -a X64 -t VS2022
-                - name: Upload EfiGuard artifacts
+          cd /d C:\edk2
+          call edksetup.bat Rebuild
+
+      - name: Set PACKAGES_PATH
+        shell: cmd
+        run: |
+          set PACKAGES_PATH=C:\edk2;%GITHUB_WORKSPACE%
+          echo PACKAGES_PATH=C:\edk2;%GITHUB_WORKSPACE% >> %GITHUB_ENV%
+
+      - name: Build EfiGuard
+        shell: cmd
+        run: |
+          cd /d C:\edk2
+          call edksetup.bat
+          build -p %GITHUB_WORKSPACE%\EfiGuardPkg\EfiGuardPkg.dsc -a X64 -t VS2022 -b RELEASE
+
+      - name: List build output
+        shell: cmd
+        run: |
+          dir /s /b C:\edk2\Build\EfiGuardPkg
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: efiguard-build
-          path: |
-            Build/**/*.efi
+          path: C:\edk2\Build\EfiGuardPkg\**\*.efi
           if-no-files-found: error
