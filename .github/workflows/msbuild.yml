@@ -25,6 +25,11 @@ jobs:
           choco install nasm -y
           echo "C:\Program Files\NASM" >> $env:GITHUB_PATH
 
+
+      - name: Set NASM_PREFIX
+        shell: cmd
+        run: |
+          echo NASM_PREFIX=C:\Program Files\NASM\ >> %GITHUB_ENV%
       - name: Clone EDK2
         run: |
           git clone --depth 1 https://github.com/tianocore/edk2.git C:\edk2
