@@ -31,3 +31,10 @@ jobs:
         run: |
           # 调 EDK2 的 build 命令
           # 例如：build -p EfiGuardPkg/EfiGuardPkg.dsc -a X64 -t VS2022
+                - name: Upload EfiGuard artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: efiguard-build
+          path: |
+            Build/**/*.efi
+          if-no-files-found: error
